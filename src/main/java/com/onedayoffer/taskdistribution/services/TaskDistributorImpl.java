@@ -37,7 +37,7 @@ public class TaskDistributorImpl implements TaskDistributor {
     }
 
     if (!tasks.isEmpty()) {
-      logUnassignedTasks(tasks);
+      log.info("List of task which can't be assigned to any available users: {}", tasks);
     }
 
     logTaskDistribution(employees, "after distribution");
@@ -60,14 +60,5 @@ public class TaskDistributorImpl implements TaskDistributor {
                 state,
                 employee.getTasks(),
                 employee.getTotalLeadTime()));
-  }
-
-  private void logUnassignedTasks(List<TaskDTO> tasks) {
-    tasks.forEach(
-        task ->
-            log.warn(
-                "Task \"{}\" with priority {} could not be assigned to any employee.",
-                task.getName(),
-                task.getPriority()));
   }
 }
