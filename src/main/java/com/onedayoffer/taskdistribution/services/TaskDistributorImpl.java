@@ -12,54 +12,35 @@ import java.util.List;
 @Slf4j
 @Service
 public class TaskDistributorImpl implements TaskDistributor {
-  private static final int WORKING_HOURS_IN_MINUTES = 420; // 7 hours
+  private static final int WORKING_HOURS_IN_MINUTES = 420;
 
   @Override
   public void distribute(List<EmployeeDTO> employees, List<TaskDTO> tasks) {
     log.info("Starting task distribution among employees.");
 
     tasks.sort(Comparator.comparingInt(TaskDTO::getPriority));
-
     logTaskDistribution(employees, "before distribution");
 
-    for (EmployeeDTO employee : employees) {
-      Iterator<TaskDTO> taskIterator = tasks.iterator();
-      while (taskIterator.hasNext() && employee.getTotalLeadTime() < WORKING_HOURS_IN_MINUTES) {
-        TaskDTO task = taskIterator.next();
-        int availableTime = WORKING_HOURS_IN_MINUTES - employee.getTotalLeadTime();
-        if (task.getLeadTime() <= availableTime) {
-          employee.addTask(task);
-          log.info(
-              "Task with priority {} assigned to employee {}",
-              task.getPriority(),
-              employee.getFio());
-          taskIterator.remove();
-        }
+    Iterator<TaskDTO> taskIterator = tasks.iterator();
+    while (taskIterator.hasNext()) {
+      TaskDTO task = taskIterator.next();
+      EmployeeDTO assignedEmployee = findAvailableEmployee(employees, task.getLeadTime());
+
+      if (assignedEmployee != null) {
+        assignedEmployee.addTask(task);
+        taskIterator.remove();
+        log.info(
+            "Task with priority {} assigned to employee {}",
+            task.getPriority(),
+            assignedEmployee.getFio());
       }
     }
 
-    for (TaskDTO task : tasks) {
-      EmployeeDTO availableEmployee = findAvailableEmployee(employees, task.getLeadTime());
-      if (availableEmployee != null) {
-        availableEmployee.addTask(task);
-        log.info(
-            "Remaining task with priority {} assigned to employee {}",
-            task.getPriority(),
-            availableEmployee.getFio());
-      }
+    if (!tasks.isEmpty()) {
+      logUnassignedTasks(tasks);
     }
 
     logTaskDistribution(employees, "after distribution");
-
-    if (!tasks.isEmpty()) {
-      for (TaskDTO task : tasks) {
-        log.warn(
-            "Task \"{}\" with priority {} could not be assigned to any employee.",
-            task.getName(),
-            task.getPriority());
-      }
-    }
-
     log.info("Task distribution completed.");
   }
 
@@ -71,13 +52,22 @@ public class TaskDistributorImpl implements TaskDistributor {
   }
 
   private void logTaskDistribution(List<EmployeeDTO> employees, String state) {
-    for (EmployeeDTO employee : employees) {
-      log.info(
-          "State of employee {} {} task distribution - tasks: {}, total lead time: {}",
-          employee.getFio(),
-          state,
-          employee.getTasks(),
-          employee.getTotalLeadTime());
-    }
+    employees.forEach(
+        employee ->
+            log.info(
+                "State of employee {} {} task distribution - tasks: {}, total lead time: {}",
+                employee.getFio(),
+                state,
+                employee.getTasks(),
+                employee.getTotalLeadTime()));
+  }
+
+  private void logUnassignedTasks(List<TaskDTO> tasks) {
+    tasks.forEach(
+        task ->
+            log.warn(
+                "Task \"{}\" with priority {} could not be assigned to any employee.",
+                task.getName(),
+                task.getPriority()));
   }
 }
